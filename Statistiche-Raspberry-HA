@@ -1,0 +1,275 @@
+DA INSERIRE IN CONFIGURATION
+SENSOR:
+  - platform: systemmonitor
+    resources:
+      - type: disk_free
+        arg: /
+      - type: disk_use
+        arg: /
+      - type: disk_use_percent
+        arg: /home
+      - type: memory_free
+      - type: memory_use
+      - type: memory_use_percent
+      - type: processor_use
+      - type: last_boot
+      - type: swap_use_percent
+      - type: swap_use
+      - type: swap_free
+      - type: throughput_network_in
+        arg: eth0
+      - type: throughput_network_out
+        arg: eth0
+      - type: network_in
+        arg: 'Local Area Connection'
+      - type: network_in
+        arg: eth0
+      - type: network_out
+        arg: eth0
+      - type: ipv4_address
+        arg: eth0
+      - type: packets_in
+        arg: eth0
+      - type: packets_out
+        arg: eth0
+      - type: process
+        arg: octave-cli
+      - type: load_1m
+      - type: load_5m
+      - type: load_15m
+  
+  - platform: command_line
+    name: HA Start
+    #icon: mdi:lastpass
+    command: grep -m1 'Home Assistant initialized' home-assistant.log | awk '{ print $6, $7, $8, $9, $10 }'
+  - platform: command_line
+    name: CPU Temperature
+    command: "cat /sys/class/thermal/thermal_zone0/temp"
+    unit_of_measurement: "°C"
+    value_template: '{{ value | multiply(0.001) | round(1) }}'
+  - platform: dnsip
+  - platform: uptime
+    name: Time Online 
+    
+    ##################################### CARD ###########################
+    type: vertical-stack
+cards:
+  - type: entities
+    entities:
+      - entity: sensor.last_boot
+        name: Último Boot
+        state_color: false
+    state_color: true
+    title: Raspberry Pi
+  - type: horizontal-stack
+    cards:
+      - type: 'custom:mini-graph-card'
+        entities:
+          - sensor.processor_use_percent
+        name: CPU - Uso
+        line_color: cyan
+        line_width: 8
+        font_size: 70
+        icon: 'mdi:server'
+        show_label: true
+      - type: 'custom:mini-graph-card'
+        entities:
+          - sensor.cpu_temperature
+        index: 1
+        name: CPU - Temperatura
+        line_color: cyan
+        line_width: 8
+        font_size: 70
+        show_labels: true
+  - type: horizontal-stack
+    cards:
+      - type: 'custom:button-card'
+        entity: sensor.cpu_temperature
+        icon: 'mdi:desktop-tower-monitor'
+        aspect_ratio: 1/1
+        name: Rasp Pi3 16gb
+        styles:
+          card:
+            - border-radius: 10%
+            - padding: 10%
+            - color: white
+            - font-size: 10px
+            - text-shadow: 0px 0px 5px black
+            - text-transform: captalize
+          grid:
+            - grid-template-areas: '"i temp" "n n" "cpu cpu" "ram ram" "sd sd"'
+            - grid-template-columns: 1fr 1fr
+            - grid-template-rows: 1fr min-content min-content min-content min-content
+          name:
+            - font-weight: bold
+            - font-size: 13px
+            - color: white
+            - align-self: middle
+            - justify-self: start
+            - padding-bottom: 4px
+          img_cell:
+            - justify-content: start
+            - align-items: start
+            - margin: none
+          icon:
+            - color: cyan
+            - width: 70%
+            - margin-top: '-10%'
+          custom_fields:
+            temp:
+              - align-self: start
+              - justify-self: end
+            cpu:
+              - padding-bottom: 2px
+              - align-self: middle
+              - justify-self: start
+              - '--text-color-sensor': >-
+                  [[[ if (states["sensor.processor_use_percent"].state > 80)
+                  return "red"; ]]]
+            ram:
+              - padding-bottom: 2px
+              - align-self: middle
+              - justify-self: start
+              - '--text-color-sensor': >-
+                  [[[ if (states["sensor.memory_use_percent"].state > 80) return
+                  "red"; ]]]
+            sd:
+              - align-self: middle
+              - justify-self: start
+              - '--text-color-sensor': >-
+                  [[[ if (states["sensor.disk_use_percent_home"].state > 80)
+                  return "red"; ]]]
+        custom_fields:
+          temp: |
+            [[[
+              return `<ha-icon
+                icon="mdi:thermometer"
+                style="width: 12px; height: 12px; color: cyan;">
+                </ha-icon><span>${entity.state}°C</span>`
+            ]]]
+          cpu: |
+            [[[
+              return `<ha-icon
+                icon="mdi:server"
+                style="width: 12px; height: 12px; color: cyan;">
+                </ha-icon><span>CPU: <span style="color: var(--text-color-sensor);">${states['sensor.processor_use_percent'].state}%</span></span>`
+            ]]]
+          ram: |
+            [[[
+              return `<ha-icon
+                icon="mdi:memory"
+                style="width: 12px; height: 12px; color: cyan;">
+                </ha-icon><span>RAM: <span style="color: var(--text-color-sensor);">${states['sensor.memory_use_percent'].state}%</span></span>`
+            ]]]
+          sd: |
+            [[[
+              return `<ha-icon
+                icon="mdi:harddisk"
+                style="width: 12px; height: 12px; color: cyan;">
+                </ha-icon><span>SD: <span style="color: var(--text-color-sensor);">${states['sensor.disk_use_percent_home'].state}%</span></span>`
+            ]]]
+             
+      - entity: sensor.speedtest_download
+        name: Download (Mbps)
+        type: gauge
+        unit: ' '
+        severity:
+          green: 0
+          yellow: 45
+          red: 85
+      - entity: sensor.speedtest_upload
+        name: Upload (Mbps)
+        type: gauge
+        unit: ' '
+        severity:
+          green: 0
+          yellow: 45
+          red: 85
+  - align: split
+    animation: auto
+    attribute: false
+    card_style: false
+    charge_entity: false
+    columns: 1
+    decimal: 0
+    delay: 5000
+    direction: right
+    entities:
+      - entity: sensor.disk_use_percent_home
+        icon: 'mdi:harddisk'
+        severity:
+          - color: '#40bf40'
+            value: 10
+          - color: '#ffde00'
+            value: 50
+          - color: '#bf4040'
+            value: 100
+        name: HDD
+      - entity: sensor.memory_use_percent
+        icon: 'mdi:memory'
+        severity:
+          - color: '#40bf40'
+            value: 0
+          - color: '#ffde00'
+            value: 50
+          - color: '#bf4040'
+            value: 100
+        name: RAM
+    entity_config: true
+    height: 40px
+    icon: false
+    icon_position: 'off'
+    icon_style:
+      filter: none
+      height: 34px
+      width: 34px
+    indicator: auto
+    limit_value: false
+    max: 100
+    min: 0
+    minmax_style: false
+    padding: 5px
+    positions:
+      icon: 'off'
+      indicator: 'off'
+      title: outside
+    rounding: 5px
+    saturation: 50%
+    severity:
+      - color: '#00ffff'
+        from: 50
+        to: 100
+      - color: '#00ffff'
+        from: 20
+        to: 49
+      - color: '#40bf40'
+        from: 0
+        to: 19
+    show_icon: true
+    show_minmax: false
+    show_value: true
+    speed: 1000
+    style: |-
+      bar-card-current, bar-card-backgroundbar {
+        border-radius: 20px;
+      }
+      bar-card-value {
+        margin-right: auto;
+      }
+    tap_action: info
+    target: false
+    title: false
+    title_position: inside
+    title_style:
+      color: '#00ffff'
+      font-weight: normal
+      text-shadow: none
+    type: 'custom:bar-card'
+    unit_of_measurement: false
+    value_style:
+      color: '#00ffff'
+      font-size: 18px
+      font-weight: normal
+      text-shadow: none
+      visibility: false
+      width: 100%
